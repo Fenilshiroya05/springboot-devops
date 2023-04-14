@@ -1,5 +1,4 @@
 #!/usr/bin/env groovy
-
 pipeline {
     agent any
     environment {
@@ -10,7 +9,7 @@ pipeline {
         choice(name: 'VERSION', choices:['1','2', '3'], description: '')
         booleanParam(name: 'executeTest', defaultValue : true, description: '')
     }
-    
+
     tools{
         maven 'maven-3.9.0'
     }
@@ -31,68 +30,72 @@ pipeline {
             }
         }
         stage('build') {
-            
+
             steps {
                 script{
                     echo 'building the application'
                     echo "Software version is ${NEW_VERSION}"
-                    sh 'mvn build-helper:parse-version versions:set -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.nextMinorVersion}.\\\${parsedVersion.incrementalVersion}\\\${parsedVersion.qualifier?}' 
+                    //sh 'mvn build-helper:parse-version versions:set -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.nextMinorVersion}.\\\${parsedVersion.incrementalVersion}\\\${parsedVersion.qualifier?}'
                     sh 'mvn clean package'
-                    def version = (readFile('pom.xml') =~ '<version>(.+)</version>')[0][2]
+                    //def version = (readFile('pom.xml') =~ '<version>(.+)</version>')[0][2]
                     env.IMAGE_NAME = "$version-$BUILD_NUMBER"
-                    sh "docker build -t learnwithparth/spring-boot:${IMAGE_NAME} ."
-                        
-                    }
+                    sh "docker build -t fenilshiroya/spring-boot:${IMAGE_NAME} ."
+                    sh "docker run -it -d -p 80:8080 fenilshiroya/spring-boot:${IMAGE_NAME}"
+                }
             }
         }
-      stage('test') {
-          when{  
-             expression{
-                 params.executeTest
-             }
-          }
+        stage('test') {
+            when{
+                expression{
+                    params.executeTest
+                }
+            }
             steps {
                 script{echo 'testing the application'
-                sh 'mvn test'}
+                    sh 'mvn test'}
             }
         }
-      stage('deploy') {
-        input{
-            message "Select the environment to deploy"
-            ok "done"
-            parameters{
-                choice(name: 'Type', choices:['Dev','Test','Deploy'], description: '')
-            }
+        stage('deploy') {
+            // input{
+            //     message "Select the environment to deploy"
+            //     ok "done"
+            //     parameters{
+            //         choice(name: 'Type', choices:['Dev','Test','Deploy'], description: '')
+            //     }
 
-        }
+            // }
             steps {
                 script{echo 'deploying the application'
-                withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]){
-                    sh "echo ${PASSWORD} | docker login -u ${USERNAME} --password-stdin"
-                    sh "docker push learnwithparth/spring-boot:${IMAGE_NAME}"
-                }}
-                
-             }
+                    withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]){
+                        sh "echo ${PASSWORD} | docker login -u ${USERNAME} --password-stdin"
+                        sh "docker push fenilshiroya/spring-boot:${IMAGE_NAME}"
+                    }}
+
+            }
         }
-        // stage('commit version update'){
-        //     steps{
-        //         script{
-        //             withCredentials([usernamePassword(credentialsId: 'git-credentials', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]){
-        //                 sh 'git config --global user.email "jenkins@example.com"'
-        //                 sh 'git config --global user.name "jenkins"'
 
-        //                 sh 'git status'
-        //                 sh 'git branch'
-        //                 sh 'git config --list'
-
-        //                 sh "git remote set-url origin https://${USERNAME}:${PASSWORD}@github.com/learnwithparth/springboot-jenkins.git"
-        //                 sh 'git add .'
-        //                 sh 'git commit -m "version change"'
-        //                 sh 'git push origin HEAD:jenkins-jobs'
-        //             }
-        //         }
-        //     }
-        // }
+//         stage('commit version update'){
+//             steps{
+//                 script{
+//                     withCredentials([usernamePassword(credentialsId: 'git-credentials', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]){
+//                         sh 'git config --global user.email "bhoomildayani182@gmail.com"'
+//                         sh 'git config --global user.name "bhoomildayani182"'
+//
+//
+//                         sh 'git status'
+//                         sh 'git branch'
+//                         sh 'git config --list'
+//
+//
+//                         sh "git remote set-url origin https://${PASSWORD}@github.com/bhoomildayani182/devOpsLab.git"
+//                         sh 'git add .'
+//                         sh 'git commit -m "version change"'
+//                         // sh 'git push -u origin master'
+//                         sh 'git push origin HEAD:jenkins-jobs'
+//                     }
+//                 }
+//             }
+//         }
     }
     post{
         always{
